@@ -253,28 +253,31 @@
 
     <script type="module">
       import {
+        __wbg_error_7534b8e9a36f1ab4,
+        __wbg_new_8a6f238a6ece86ea,
+        __wbg_set_wasm,
+        __wbg_stack_0ed75d68575b0f3c,
+        __wbindgen_init_externref_table,
         compile,
         parse,
         tokenize,
         version,
-        __wbg_set_wasm,
-        __wbg_error_7534b8e9a36f1ab4,
-        __wbg_new_8a6f238a6ece86ea,
-        __wbg_stack_0ed75d68575b0f3c,
-        __wbindgen_init_externref_table,
       } from "./lib/solarpark.internal.js";
       import { init } from "https://esm.sh/modern-monaco";
 
       // Initialize WASM for browser
       const wasmResponse = await fetch("./lib/solarpark.wasm");
-      const wasmModule = await WebAssembly.instantiateStreaming(wasmResponse, {
-        "./solarpark.internal.js": {
-          __wbg_error_7534b8e9a36f1ab4,
-          __wbg_new_8a6f238a6ece86ea,
-          __wbg_stack_0ed75d68575b0f3c,
-          __wbindgen_init_externref_table,
+      const wasmModule = await WebAssembly.instantiateStreaming(
+        wasmResponse,
+        {
+          "./solarpark.internal.js": {
+            __wbg_error_7534b8e9a36f1ab4,
+            __wbg_new_8a6f238a6ece86ea,
+            __wbg_stack_0ed75d68575b0f3c,
+            __wbindgen_init_externref_table,
+          },
         },
-      });
+      );
       __wbg_set_wasm(wasmModule.instance.exports);
       wasmModule.instance.exports.__wbindgen_start();
 
