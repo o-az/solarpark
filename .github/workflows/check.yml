@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: "🦖 Setup Deno"
-      - uses: denoland/setup-deno@main
+        uses: denoland/setup-deno@main
         with:
           deno-version: 'latest'
 
