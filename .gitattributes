@@ -1,0 +1,7 @@
+* text=auto
+.gitattributes !filter !diff
+
+.env.example linguist-language=Dotenv
+
+deno.lock linguist-language=JSON-with-Comments
+deno.json linguist-language=JSON-with-Comments

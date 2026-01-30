@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/denoland/deno/refs/heads/main/cli/schemas/config-file.v1.json",
+  "tasks": {
+    "build": "deno run --allow-all jsr:@deno/wasmbuild@0.21.0"
+  },
+  "imports": {
+    "@std/http": "jsr:@std/http@^1.0.23"
+  },
+  "deploy": {
+    "org": "zk",
+    "app": "solar"
+  }
+}
