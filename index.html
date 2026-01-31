@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!--favicon-->
     <link
       rel="icon"
       href="https://raw.githubusercontent.com/paradigmxyz/solar/refs/heads/main/assets/favicon.ico"
@@ -262,11 +261,11 @@
         parse,
         tokenize,
         version,
-      } from "./lib/solarpark.internal.js";
+      } from "./dist/solarpark.internal.js";
       import { init } from "https://esm.sh/modern-monaco";
 
       // Initialize WASM for browser
-      const wasmResponse = await fetch("./lib/solarpark.wasm");
+      const wasmResponse = await fetch("./dist/solarpark.wasm");
       const wasmModule = await WebAssembly.instantiateStreaming(
         wasmResponse,
         {

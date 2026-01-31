@@ -2,11 +2,9 @@ name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
   pull_request:
-    branches:
-      - main
+    branches: ["main"]
   workflow_dispatch:
 
 defaults:
@@ -32,11 +30,16 @@ jobs:
         with:
           deno-version: "latest"
 
-      - name: Build step
-        run: "deno task build"
-
-      - name: Upload Deployment
+      - name: Build & Deploy
         run: |
+          deno run \
+            --allow-all \
+            jsr:@deno/wasmbuild@ \
+            --project='solarpark' \
+            --out='dist'
+
+          sleep 1
+
           deno deploy \
             --app='solar' \
             --prod \
