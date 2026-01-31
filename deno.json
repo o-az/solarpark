@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/denoland/deno/refs/heads/main/cli/schemas/config-file.v1.json",
   "tasks": {
     "check": "deno fmt && deno lint",
-    "build": "deno run --allow-all jsr:@deno/wasmbuild@0.21.0"
+    "build": "deno run --allow-all jsr:@deno/wasmbuild"
   },
   "imports": {
     "@std/http": "jsr:@std/http@^1.0.23"

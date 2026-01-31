@@ -34,7 +34,7 @@ jobs:
         run: |
           deno run \
             --allow-all \
-            jsr:@deno/wasmbuild@ \
+            jsr:@deno/wasmbuild \
             --project='solarpark' \
             --out='dist'
 
