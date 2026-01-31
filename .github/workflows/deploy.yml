@@ -1,0 +1,43 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  ACTIONS_RUNNER_DEBUG: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: "🔑 Checkout"
+        uses: actions/checkout@v6
+
+      - name: "🦖 Setup Deno"
+        uses: denoland/setup-deno@main
+        with:
+          deno-version: "latest"
+
+      - name: Build step
+        run: "deno task build"
+
+      - name: Upload Deployment
+        run: |
+          deno deploy \
+            --app='solar' \
+            --prod \
+            --token ${{ secrets.DENO_DEPLOY_TOKEN }}
