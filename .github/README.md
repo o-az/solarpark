@@ -1,4 +1,4 @@
-<div>
+<div align="center">
   <p style="font-size: 4.5rem; font-weight: 900; color: white; font-style: italic">
       solarpark 🎡
   </p>
@@ -17,10 +17,12 @@
 
 ---
 
-[Solar](https://github.com/paradigmxyz/solar) is a new Solidity compiler written
-in Rust. It aims to solve all the pain points of `solc` and `solc-js`. It's
-WASM-friendly which means it's light work to get it up in the browser.
+[Solar](https://github.com/paradigmxyz/solar) is a new Solidity compiler that
+aims to solve all the pain points of `solc`. It is WebAssembly-friendly which
+means it is light work to get it up in the browser.
 
-[solarpark] tracks Solar releases and provides instant access and
-experimentation for every new release. It automatically redeploys when `main`
-branch in the Solar repository is updated.
+[solarpark](https://solar.zk.deno.net) tracks
+[Solar](https://github.com/paradigmxyz/solar) releases and provides instant
+access and experimentation for every new release. It automatically redeploys
+when the `main` branch in the [Solar](https://github.com/paradigmxyz/solar)
+repository is updated.
