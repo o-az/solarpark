@@ -56,15 +56,10 @@ pub struct ContractOutput {
 /// Tokenize Solidity source code and return the token stream.
 #[wasm_bindgen]
 pub fn tokenize(source: &str) -> String {
-    let sess = Session::builder()
-        .with_buffer_emitter(ColorChoice::Never)
-        .single_threaded()
-        .build();
+    let sess = Session::builder().with_buffer_emitter(ColorChoice::Never).single_threaded().build();
 
     let result = sess.enter_sequential(|| {
-        let file = sess
-            .source_map()
-            .new_source_file("input.sol".to_string(), source.to_string());
+        let file = sess.source_map().new_source_file("input.sol".to_string(), source.to_string());
 
         let file = match file {
             Ok(f) => f,
@@ -87,11 +82,7 @@ pub fn tokenize(source: &str) -> String {
             tokens.push(TokenInfo { kind, text, span });
         }
 
-        TokensResult {
-            success: true,
-            tokens,
-            diagnostics: String::new(),
-        }
+        TokensResult { success: true, tokens, diagnostics: String::new() }
     });
 
     serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
@@ -100,16 +91,11 @@ pub fn tokenize(source: &str) -> String {
 /// Parse Solidity source code and return the AST.
 #[wasm_bindgen]
 pub fn parse(source: &str) -> String {
-    let sess = Session::builder()
-        .with_buffer_emitter(ColorChoice::Never)
-        .single_threaded()
-        .build();
+    let sess = Session::builder().with_buffer_emitter(ColorChoice::Never).single_threaded().build();
 
     let result = sess.enter_sequential(|| {
         let arena = Arena::new();
-        let file = sess
-            .source_map()
-            .new_source_file("input.sol".to_string(), source.to_string());
+        let file = sess.source_map().new_source_file("input.sol".to_string(), source.to_string());
 
         let file = match file {
             Ok(f) => f,
@@ -127,10 +113,8 @@ pub fn parse(source: &str) -> String {
 
         match parser.parse_file() {
             Ok(ast) => {
-                let diagnostics = sess
-                    .emitted_diagnostics()
-                    .map(|d| d.to_string())
-                    .unwrap_or_default();
+                let diagnostics =
+                    sess.emitted_diagnostics().map(|d| d.to_string()).unwrap_or_default();
                 ParseResult {
                     success: sess.dcx.err_count() == 0,
                     ast: Some(format!("{ast:#?}")),
@@ -139,15 +123,9 @@ pub fn parse(source: &str) -> String {
             }
             Err(e) => {
                 e.emit();
-                let diagnostics = sess
-                    .emitted_diagnostics()
-                    .map(|d| d.to_string())
-                    .unwrap_or_default();
-                ParseResult {
-                    success: false,
-                    ast: None,
-                    diagnostics,
-                }
+                let diagnostics =
+                    sess.emitted_diagnostics().map(|d| d.to_string()).unwrap_or_default();
+                ParseResult { success: false, ast: None, diagnostics }
             }
         }
     });
@@ -158,10 +136,7 @@ pub fn parse(source: &str) -> String {
 /// Compile Solidity source code and return the ABI for each contract.
 #[wasm_bindgen]
 pub fn compile(source: &str) -> String {
-    let sess = Session::builder()
-        .with_buffer_emitter(ColorChoice::Never)
-        .single_threaded()
-        .build();
+    let sess = Session::builder().with_buffer_emitter(ColorChoice::Never).single_threaded().build();
 
     let mut compiler = Compiler::new(sess);
 
@@ -191,30 +166,16 @@ pub fn compile(source: &str) -> String {
         // Lower to HIR
         let lower_result = compiler.lower_asts();
         if lower_result.is_err() || matches!(lower_result, Ok(ControlFlow::Break(_))) {
-            let diagnostics = compiler
-                .sess()
-                .emitted_diagnostics()
-                .map(|d| d.to_string())
-                .unwrap_or_default();
-            return CompileResult {
-                success: false,
-                contracts: vec![],
-                diagnostics,
-            };
+            let diagnostics =
+                compiler.sess().emitted_diagnostics().map(|d| d.to_string()).unwrap_or_default();
+            return CompileResult { success: false, contracts: vec![], diagnostics };
         }
 
         // Run analysis (type checking)
         if compiler.analysis().is_err() || compiler.sess().dcx.err_count() > 0 {
-            let diagnostics = compiler
-                .sess()
-                .emitted_diagnostics()
-                .map(|d| d.to_string())
-                .unwrap_or_default();
-            return CompileResult {
-                success: false,
-                contracts: vec![],
-                diagnostics,
-            };
+            let diagnostics =
+                compiler.sess().emitted_diagnostics().map(|d| d.to_string()).unwrap_or_default();
+            return CompileResult { success: false, contracts: vec![], diagnostics };
         }
 
         // Extract ABIs, function hashes, event hashes, error hashes, and interface IDs
@@ -251,7 +212,8 @@ pub fn compile(source: &str) -> String {
                 for &item_id in contract.items {
                     if let solar_sema::hir::ItemId::Error(error_id) = item_id {
                         let sig = gcx.item_signature(error_id.into()).to_string();
-                        let selector = alloy_primitives::hex::encode(gcx.function_selector(error_id));
+                        let selector =
+                            alloy_primitives::hex::encode(gcx.function_selector(error_id));
                         error_hashes.insert(sig, selector);
                     }
                 }
@@ -263,21 +225,21 @@ pub fn compile(source: &str) -> String {
                     None
                 };
 
-                ContractOutput { name, abi: abi_json, function_hashes, event_hashes, error_hashes, interface_id }
+                ContractOutput {
+                    name,
+                    abi: abi_json,
+                    function_hashes,
+                    event_hashes,
+                    error_hashes,
+                    interface_id,
+                }
             })
             .collect();
 
-        let diagnostics = compiler
-            .sess()
-            .emitted_diagnostics()
-            .map(|d| d.to_string())
-            .unwrap_or_default();
+        let diagnostics =
+            compiler.sess().emitted_diagnostics().map(|d| d.to_string()).unwrap_or_default();
 
-        CompileResult {
-            success: compiler.sess().dcx.err_count() == 0,
-            contracts,
-            diagnostics,
-        }
+        CompileResult { success: compiler.sess().dcx.err_count() == 0, contracts, diagnostics }
     });
 
     serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
