@@ -20,7 +20,7 @@
         max-width: 100vw;
       }
       body {
-        font-family: "SF Mono", "monospace", "Menlo", "Ubuntu Mono";
+        font-family: 'SF Mono', 'monospace', 'Menlo', 'Ubuntu Mono';
         background: #000;
         color: #fff;
         min-height: 100vh;
@@ -82,7 +82,7 @@
         flex-shrink: 0;
       }
       .resize-handle::after {
-        content: "";
+        content: '';
         width: 2px;
         height: 48px;
         background: #333;
@@ -194,6 +194,449 @@
     </style>
   </head>
   <body>
+    <script type="module">
+      import {
+        __wbg_error_7534b8e9a36f1ab4,
+        __wbg_new_8a6f238a6ece86ea,
+        __wbg_set_wasm,
+        __wbg_stack_0ed75d68575b0f3c,
+        __wbindgen_init_externref_table,
+        compile,
+        parse,
+        tokenize,
+        version,
+      } from './dist/solarpark.internal.js'
+      import { init } from 'https://esm.sh/modern-monaco'
+
+      // Initialize WASM for browser
+      const wasmResponse = await fetch('./dist/solarpark.wasm')
+      const wasmModule = await WebAssembly.instantiateStreaming(
+        wasmResponse,
+        {
+          './solarpark.internal.js': {
+            __wbg_error_7534b8e9a36f1ab4,
+            __wbg_new_8a6f238a6ece86ea,
+            __wbg_stack_0ed75d68575b0f3c,
+            __wbindgen_init_externref_table,
+          },
+        },
+      )
+      __wbg_set_wasm(wasmModule.instance.exports)
+      wasmModule.instance.exports.__wbindgen_start()
+
+      const DEFAULT_SOURCE = `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Counter {
+    uint256 public count;
+
+    error InsufficientBalance(uint256 available, uint256 required);
+    event CountChanged(uint256 indexed newCount);
+
+    function increment() public {
+        count += 1;
+        emit CountChanged(count);
+    }
+
+    function decrement() public {
+        if (count == 0) revert InsufficientBalance(0, 1);
+        count -= 1;
+        emit CountChanged(count);
+    }
+
+    function getCount() public view returns (uint256) {
+        return count;
+    }
+}`
+
+      // URL sharing utilities
+      function compressToBase64(str) {
+        const bytes = new TextEncoder().encode(str)
+        let binary = ''
+        for (const byte of bytes) {
+          binary += String.fromCharCode(byte)
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_')
+          .replace(/=+$/, '')
+      }
+
+      function decompressFromBase64(base64) {
+        try {
+          const padded = base64.replace(/-/g, '+').replace(/_/g, '/')
+          const binary = atob(padded)
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i)
+          }
+          return new TextDecoder().decode(bytes)
+        } catch {
+          return null
+        }
+      }
+
+      function getCodeFromUrl() {
+        const hash = window.location.hash.slice(1)
+        if (!hash) return null
+        return decompressFromBase64(hash)
+      }
+
+      function updateUrlWithCode(code) {
+        const encoded = compressToBase64(code)
+        history.replaceState(null, '', '#' + encoded)
+      }
+
+      const initialCode = getCodeFromUrl() || DEFAULT_SOURCE
+
+      const editorEl = document.getElementById('editor')
+      const tokensOutputEl = document.getElementById('tokensOutput')
+      const astOutputEl = document.getElementById('astOutput')
+      const abiOutputEl = document.getElementById('abiOutput')
+      const selectorsOutputEl = document.getElementById(
+        'selectorsOutput',
+      )
+      const diagnosticsEl = document.getElementById('diagnostics')
+      const versionEl = document.getElementById('version')
+      const tabs = document.querySelectorAll('.tab')
+      const tabContents = document.querySelectorAll('.tab-content')
+
+      let editor, tokensEditor, astEditor, abiEditor, selectorsEditor
+
+      // Resize handle
+      const resizeHandle = document.getElementById('resizeHandle')
+      const sourcePanel = document.querySelector('.panel.source')
+      const container = document.querySelector('.container')
+      let isResizing = false
+
+      resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true
+        document.body.style.cursor = 'col-resize'
+        document.body.style.userSelect = 'none'
+      })
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return
+        const containerRect = container.getBoundingClientRect()
+        const newWidth = ((e.clientX - containerRect.left) / containerRect.width) *
+          100
+        if (newWidth > 20 && newWidth < 80) {
+          sourcePanel.style.width = `${newWidth}%`
+        }
+      })
+
+      document.addEventListener('mouseup', () => {
+        isResizing = false
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      })
+
+      // Tab switching - handled after updateActiveTab is defined
+
+      // Fetch Solidity grammar
+      const solidityGrammar = await fetch(
+        'https://raw.githubusercontent.com/juanfranblanco/vscode-solidity/master/syntaxes/solidity.json',
+      ).then((r) => r.json())
+
+      // Initialize Monaco with Shiki
+      const monaco = await init({
+        themes: ['vitesse-dark'],
+        langs: [
+          'json',
+          {
+            ...solidityGrammar,
+            name: 'solidity',
+            scopeName: 'source.solidity',
+          },
+        ],
+      })
+
+      const editorOptions = {
+        theme: 'vitesse-dark',
+        minimap: { enabled: false },
+        fontSize: 15,
+        fontFamily: "'SF Mono', 'monospace', 'Menlo', 'Ubuntu Mono', monospace",
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        padding: { top: 8, bottom: 8, left: 0, right: 0 },
+      }
+
+      editor = monaco.editor.create(editorEl, {
+        ...editorOptions,
+        value: initialCode,
+        language: 'solidity',
+        lineNumbers: 'on',
+      })
+
+      const outputEditorOptions = {
+        ...editorOptions,
+        readOnly: true,
+        lineNumbers: 'off',
+      }
+
+      tokensEditor = monaco.editor.create(tokensOutputEl, {
+        ...outputEditorOptions,
+        value: '// Click "Tokens" to see the token stream',
+        language: 'json',
+      })
+
+      astEditor = monaco.editor.create(astOutputEl, {
+        ...outputEditorOptions,
+        value: '// Click "AST" to see the syntax tree',
+        language: 'json',
+      })
+
+      abiEditor = monaco.editor.create(abiOutputEl, {
+        ...outputEditorOptions,
+        value: '// Click "ABI" to see the contract ABI',
+        language: 'json',
+      })
+
+      selectorsEditor = monaco.editor.create(selectorsOutputEl, {
+        ...outputEditorOptions,
+        value: '// Click "Selectors" to see function/event/error selectors',
+        language: 'json',
+      })
+
+      // Initialize Solar
+      try {
+        versionEl.textContent = `v${version()}`
+      } catch (e) {
+        versionEl.textContent = `Error: ${e.message}`
+        versionEl.className = 'version error'
+      }
+
+      // Track which tab is active for auto-compile
+      let activeTab = 'ast'
+
+      function switchToTab(tabName) {
+        activeTab = tabName
+        tabs.forEach((t) => t.classList.remove('active'))
+        tabContents.forEach((c) => c.classList.remove('active'))
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add(
+          'active',
+        )
+        document.getElementById(`${tabName}-tab`).classList.add(
+          'active',
+        )
+      }
+
+      // Update functions for each tab
+      function updateTokens(source) {
+        try {
+          const resultJson = tokenize(source)
+          const result = JSON.parse(resultJson)
+          if (result.success) {
+            const formatted = result.tokens.map((t) =>
+              `${t.kind.padEnd(20)} ${JSON.stringify(t.text)}`
+            ).join('\n')
+            tokensEditor.setValue(formatted || '// No tokens')
+          } else {
+            tokensEditor.setValue('// Tokenization failed')
+          }
+          if (result.diagnostics) {
+            diagnosticsEl.textContent = result.diagnostics
+            diagnosticsEl.style.display = 'block'
+          } else {
+            diagnosticsEl.style.display = 'none'
+          }
+        } catch (e) {
+          tokensEditor.setValue(`// Error: ${e.message}`)
+          diagnosticsEl.style.display = 'none'
+        }
+      }
+
+      function updateAst(source) {
+        try {
+          const resultJson = parse(source)
+          const result = JSON.parse(resultJson)
+          if (result.success) {
+            astEditor.setValue(result.ast || '// No AST generated')
+          } else {
+            astEditor.setValue(result.ast || '// Parse failed')
+          }
+          if (result.diagnostics) {
+            diagnosticsEl.textContent = result.diagnostics
+            diagnosticsEl.style.display = 'block'
+            diagnosticsEl.className = result.success
+              ? 'diagnostics success'
+              : 'diagnostics error'
+          } else {
+            diagnosticsEl.style.display = 'none'
+          }
+        } catch (e) {
+          astEditor.setValue(`// Error: ${e.message}`)
+          diagnosticsEl.style.display = 'none'
+        }
+      }
+
+      function updateAbi(source) {
+        try {
+          const resultJson = compile(source)
+          const result = JSON.parse(resultJson)
+          if (result.success && result.contracts.length > 0) {
+            const output = result.contracts.map((c) => ({
+              contract: c.name,
+              abi: c.abi,
+            }))
+            abiEditor.setValue(JSON.stringify(output, null, 2))
+          } else {
+            abiEditor.setValue(
+              result.success ? '// No contracts found' : '// Compilation failed',
+            )
+          }
+          if (result.diagnostics) {
+            diagnosticsEl.textContent = result.diagnostics
+            diagnosticsEl.style.display = 'block'
+            diagnosticsEl.className = result.success
+              ? 'diagnostics success'
+              : 'diagnostics error'
+          } else {
+            diagnosticsEl.style.display = 'none'
+          }
+        } catch (e) {
+          abiEditor.setValue(`// Error: ${e.message}`)
+          diagnosticsEl.style.display = 'none'
+        }
+      }
+
+      function updateSelectors(source) {
+        try {
+          const resultJson = compile(source)
+          const result = JSON.parse(resultJson)
+          if (result.success && result.contracts.length > 0) {
+            const output = result.contracts.map((c) => {
+              const sections = [`// ${c.name}`]
+              if (Object.keys(c.functionHashes || {}).length > 0) {
+                sections.push('\n// Functions')
+                for (
+                  const [sig, hash] of Object.entries(c.functionHashes)
+                ) {
+                  sections.push(`${hash}  ${sig}`)
+                }
+              }
+              if (Object.keys(c.eventHashes || {}).length > 0) {
+                sections.push('\n// Events')
+                for (
+                  const [sig, hash] of Object.entries(c.eventHashes)
+                ) {
+                  sections.push(`${hash}  ${sig}`)
+                }
+              }
+              if (Object.keys(c.errorHashes || {}).length > 0) {
+                sections.push('\n// Errors')
+                for (
+                  const [sig, hash] of Object.entries(c.errorHashes)
+                ) {
+                  sections.push(`${hash}  ${sig}`)
+                }
+              }
+              if (c.interfaceId) {
+                sections.push(
+                  `\n// Interface ID (ERC-165)\n${c.interfaceId}`,
+                )
+              }
+              return sections.join('\n')
+            }).join('\n\n')
+            selectorsEditor.setValue(output)
+          } else {
+            selectorsEditor.setValue(
+              result.success ? '// No contracts found' : '// Compilation failed',
+            )
+          }
+          if (result.diagnostics) {
+            diagnosticsEl.textContent = result.diagnostics
+            diagnosticsEl.style.display = 'block'
+            diagnosticsEl.className = result.success
+              ? 'diagnostics success'
+              : 'diagnostics error'
+          } else {
+            diagnosticsEl.style.display = 'none'
+          }
+        } catch (e) {
+          selectorsEditor.setValue(`// Error: ${e.message}`)
+          diagnosticsEl.style.display = 'none'
+        }
+      }
+
+      function updateActiveTab() {
+        const source = editor.getValue()
+        switch (activeTab) {
+          case 'tokens':
+            updateTokens(source)
+            break
+          case 'ast':
+            updateAst(source)
+            break
+          case 'abi':
+            updateAbi(source)
+            break
+          case 'selectors':
+            updateSelectors(source)
+            break
+        }
+      }
+
+      // Debounced auto-update on editor changes + URL sync
+      let debounceTimer
+      editor.onDidChangeModelContent(() => {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          updateActiveTab()
+          updateUrlWithCode(editor.getValue())
+        }, 150)
+      })
+
+      // Tab switching with auto-update
+      tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+          switchToTab(tab.dataset.tab)
+          updateActiveTab()
+        })
+      })
+
+      // Run initial update and sync URL
+      updateActiveTab()
+      updateUrlWithCode(editor.getValue())
+
+      // Copy URL button
+      const shareBtn = document.getElementById('shareBtn')
+
+      shareBtn.addEventListener('click', async () => {
+        const url = window.location.href
+        let copied = false
+
+        // Try modern clipboard API
+        if (navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(url)
+            copied = true
+          } catch {}
+        }
+
+        // Fallback to execCommand
+        if (!copied) {
+          const input = document.createElement('input')
+          input.value = url
+          input.style.position = 'fixed'
+          input.style.opacity = '0'
+          document.body.appendChild(input)
+          input.select()
+          try {
+            copied = document.execCommand('copy')
+          } catch {}
+          document.body.removeChild(input)
+        }
+
+        if (copied) {
+          shareBtn.textContent = 'copied'
+          setTimeout(() => {
+            shareBtn.textContent = 'share'
+          }, 2000)
+        } else {
+          prompt('Copy this URL:', url)
+        }
+      })
+    </script>
+
     <header class="header">
       <div class="header-left">
         <span class="logo">SOLAR</span>
@@ -249,455 +692,5 @@
         </div>
       </div>
     </main>
-
-    <script type="module">
-      import {
-        __wbg_error_7534b8e9a36f1ab4,
-        __wbg_new_8a6f238a6ece86ea,
-        __wbg_set_wasm,
-        __wbg_stack_0ed75d68575b0f3c,
-        __wbindgen_init_externref_table,
-        compile,
-        parse,
-        tokenize,
-        version,
-      } from "./dist/solarpark.internal.js";
-      import { init } from "https://esm.sh/modern-monaco";
-
-      // Initialize WASM for browser
-      const wasmResponse = await fetch("./dist/solarpark.wasm");
-      const wasmModule = await WebAssembly.instantiateStreaming(
-        wasmResponse,
-        {
-          "./solarpark.internal.js": {
-            __wbg_error_7534b8e9a36f1ab4,
-            __wbg_new_8a6f238a6ece86ea,
-            __wbg_stack_0ed75d68575b0f3c,
-            __wbindgen_init_externref_table,
-          },
-        },
-      );
-      __wbg_set_wasm(wasmModule.instance.exports);
-      wasmModule.instance.exports.__wbindgen_start();
-
-      const DEFAULT_SOURCE = `// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-contract Counter {
-    uint256 public count;
-
-    error InsufficientBalance(uint256 available, uint256 required);
-    event CountChanged(uint256 indexed newCount);
-
-    function increment() public {
-        count += 1;
-        emit CountChanged(count);
-    }
-
-    function decrement() public {
-        if (count == 0) revert InsufficientBalance(0, 1);
-        count -= 1;
-        emit CountChanged(count);
-    }
-
-    function getCount() public view returns (uint256) {
-        return count;
-    }
-}`;
-
-      // URL sharing utilities
-      function compressToBase64(str) {
-        const bytes = new TextEncoder().encode(str);
-        let binary = "";
-        for (const byte of bytes) {
-          binary += String.fromCharCode(byte);
-        }
-        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_")
-          .replace(/=+$/, "");
-      }
-
-      function decompressFromBase64(base64) {
-        try {
-          const padded = base64.replace(/-/g, "+").replace(/_/g, "/");
-          const binary = atob(padded);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-          }
-          return new TextDecoder().decode(bytes);
-        } catch {
-          return null;
-        }
-      }
-
-      function getCodeFromUrl() {
-        const hash = window.location.hash.slice(1);
-        if (!hash) return null;
-        return decompressFromBase64(hash);
-      }
-
-      function updateUrlWithCode(code) {
-        const encoded = compressToBase64(code);
-        history.replaceState(null, "", "#" + encoded);
-      }
-
-      const initialCode = getCodeFromUrl() || DEFAULT_SOURCE;
-
-      const editorEl = document.getElementById("editor");
-      const tokensOutputEl = document.getElementById("tokensOutput");
-      const astOutputEl = document.getElementById("astOutput");
-      const abiOutputEl = document.getElementById("abiOutput");
-      const selectorsOutputEl = document.getElementById(
-        "selectorsOutput",
-      );
-      const diagnosticsEl = document.getElementById("diagnostics");
-      const versionEl = document.getElementById("version");
-      const tabs = document.querySelectorAll(".tab");
-      const tabContents = document.querySelectorAll(".tab-content");
-
-      let editor, tokensEditor, astEditor, abiEditor, selectorsEditor;
-
-      // Resize handle
-      const resizeHandle = document.getElementById("resizeHandle");
-      const sourcePanel = document.querySelector(".panel.source");
-      const container = document.querySelector(".container");
-      let isResizing = false;
-
-      resizeHandle.addEventListener("mousedown", (e) => {
-        isResizing = true;
-        document.body.style.cursor = "col-resize";
-        document.body.style.userSelect = "none";
-      });
-
-      document.addEventListener("mousemove", (e) => {
-        if (!isResizing) return;
-        const containerRect = container.getBoundingClientRect();
-        const newWidth =
-          ((e.clientX - containerRect.left) / containerRect.width) *
-          100;
-        if (newWidth > 20 && newWidth < 80) {
-          sourcePanel.style.width = `${newWidth}%`;
-        }
-      });
-
-      document.addEventListener("mouseup", () => {
-        isResizing = false;
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-      });
-
-      // Tab switching - handled after updateActiveTab is defined
-
-      // Fetch Solidity grammar
-      const solidityGrammar = await fetch(
-        "https://raw.githubusercontent.com/juanfranblanco/vscode-solidity/master/syntaxes/solidity.json",
-      ).then((r) => r.json());
-
-      // Initialize Monaco with Shiki
-      const monaco = await init({
-        themes: ["vitesse-dark"],
-        langs: [
-          "json",
-          {
-            ...solidityGrammar,
-            name: "solidity",
-            scopeName: "source.solidity",
-          },
-        ],
-      });
-
-      const editorOptions = {
-        theme: "vitesse-dark",
-        minimap: { enabled: false },
-        fontSize: 15,
-        fontFamily:
-          "'SF Mono', 'monospace', 'Menlo', 'Ubuntu Mono', monospace",
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        padding: { top: 8, bottom: 8, left: 0, right: 0 },
-      };
-
-      editor = monaco.editor.create(editorEl, {
-        ...editorOptions,
-        value: initialCode,
-        language: "solidity",
-        lineNumbers: "on",
-      });
-
-      const outputEditorOptions = {
-        ...editorOptions,
-        readOnly: true,
-        lineNumbers: "off",
-      };
-
-      tokensEditor = monaco.editor.create(tokensOutputEl, {
-        ...outputEditorOptions,
-        value: '// Click "Tokens" to see the token stream',
-        language: "json",
-      });
-
-      astEditor = monaco.editor.create(astOutputEl, {
-        ...outputEditorOptions,
-        value: '// Click "AST" to see the syntax tree',
-        language: "json",
-      });
-
-      abiEditor = monaco.editor.create(abiOutputEl, {
-        ...outputEditorOptions,
-        value: '// Click "ABI" to see the contract ABI',
-        language: "json",
-      });
-
-      selectorsEditor = monaco.editor.create(selectorsOutputEl, {
-        ...outputEditorOptions,
-        value:
-          '// Click "Selectors" to see function/event/error selectors',
-        language: "json",
-      });
-
-      // Initialize Solar
-      try {
-        versionEl.textContent = `v${version()}`;
-      } catch (e) {
-        versionEl.textContent = `Error: ${e.message}`;
-        versionEl.className = "version error";
-      }
-
-      // Track which tab is active for auto-compile
-      let activeTab = "ast";
-
-      function switchToTab(tabName) {
-        activeTab = tabName;
-        tabs.forEach((t) => t.classList.remove("active"));
-        tabContents.forEach((c) => c.classList.remove("active"));
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add(
-          "active",
-        );
-        document.getElementById(`${tabName}-tab`).classList.add(
-          "active",
-        );
-      }
-
-      // Update functions for each tab
-      function updateTokens(source) {
-        try {
-          const resultJson = tokenize(source);
-          const result = JSON.parse(resultJson);
-          if (result.success) {
-            const formatted = result.tokens.map((t) =>
-              `${t.kind.padEnd(20)} ${JSON.stringify(t.text)}`
-            ).join("\n");
-            tokensEditor.setValue(formatted || "// No tokens");
-          } else {
-            tokensEditor.setValue("// Tokenization failed");
-          }
-          if (result.diagnostics) {
-            diagnosticsEl.textContent = result.diagnostics;
-            diagnosticsEl.style.display = "block";
-          } else {
-            diagnosticsEl.style.display = "none";
-          }
-        } catch (e) {
-          tokensEditor.setValue(`// Error: ${e.message}`);
-          diagnosticsEl.style.display = "none";
-        }
-      }
-
-      function updateAst(source) {
-        try {
-          const resultJson = parse(source);
-          const result = JSON.parse(resultJson);
-          if (result.success) {
-            astEditor.setValue(result.ast || "// No AST generated");
-          } else {
-            astEditor.setValue(result.ast || "// Parse failed");
-          }
-          if (result.diagnostics) {
-            diagnosticsEl.textContent = result.diagnostics;
-            diagnosticsEl.style.display = "block";
-            diagnosticsEl.className = result.success
-              ? "diagnostics success"
-              : "diagnostics error";
-          } else {
-            diagnosticsEl.style.display = "none";
-          }
-        } catch (e) {
-          astEditor.setValue(`// Error: ${e.message}`);
-          diagnosticsEl.style.display = "none";
-        }
-      }
-
-      function updateAbi(source) {
-        try {
-          const resultJson = compile(source);
-          const result = JSON.parse(resultJson);
-          if (result.success && result.contracts.length > 0) {
-            const output = result.contracts.map((c) => ({
-              contract: c.name,
-              abi: c.abi,
-            }));
-            abiEditor.setValue(JSON.stringify(output, null, 2));
-          } else {
-            abiEditor.setValue(
-              result.success
-                ? "// No contracts found"
-                : "// Compilation failed",
-            );
-          }
-          if (result.diagnostics) {
-            diagnosticsEl.textContent = result.diagnostics;
-            diagnosticsEl.style.display = "block";
-            diagnosticsEl.className = result.success
-              ? "diagnostics success"
-              : "diagnostics error";
-          } else {
-            diagnosticsEl.style.display = "none";
-          }
-        } catch (e) {
-          abiEditor.setValue(`// Error: ${e.message}`);
-          diagnosticsEl.style.display = "none";
-        }
-      }
-
-      function updateSelectors(source) {
-        try {
-          const resultJson = compile(source);
-          const result = JSON.parse(resultJson);
-          if (result.success && result.contracts.length > 0) {
-            const output = result.contracts.map((c) => {
-              const sections = [`// ${c.name}`];
-              if (Object.keys(c.functionHashes || {}).length > 0) {
-                sections.push("\n// Functions");
-                for (
-                  const [sig, hash] of Object.entries(c.functionHashes)
-                ) {
-                  sections.push(`${hash}  ${sig}`);
-                }
-              }
-              if (Object.keys(c.eventHashes || {}).length > 0) {
-                sections.push("\n// Events");
-                for (
-                  const [sig, hash] of Object.entries(c.eventHashes)
-                ) {
-                  sections.push(`${hash}  ${sig}`);
-                }
-              }
-              if (Object.keys(c.errorHashes || {}).length > 0) {
-                sections.push("\n// Errors");
-                for (
-                  const [sig, hash] of Object.entries(c.errorHashes)
-                ) {
-                  sections.push(`${hash}  ${sig}`);
-                }
-              }
-              if (c.interfaceId) {
-                sections.push(
-                  `\n// Interface ID (ERC-165)\n${c.interfaceId}`,
-                );
-              }
-              return sections.join("\n");
-            }).join("\n\n");
-            selectorsEditor.setValue(output);
-          } else {
-            selectorsEditor.setValue(
-              result.success
-                ? "// No contracts found"
-                : "// Compilation failed",
-            );
-          }
-          if (result.diagnostics) {
-            diagnosticsEl.textContent = result.diagnostics;
-            diagnosticsEl.style.display = "block";
-            diagnosticsEl.className = result.success
-              ? "diagnostics success"
-              : "diagnostics error";
-          } else {
-            diagnosticsEl.style.display = "none";
-          }
-        } catch (e) {
-          selectorsEditor.setValue(`// Error: ${e.message}`);
-          diagnosticsEl.style.display = "none";
-        }
-      }
-
-      function updateActiveTab() {
-        const source = editor.getValue();
-        switch (activeTab) {
-          case "tokens":
-            updateTokens(source);
-            break;
-          case "ast":
-            updateAst(source);
-            break;
-          case "abi":
-            updateAbi(source);
-            break;
-          case "selectors":
-            updateSelectors(source);
-            break;
-        }
-      }
-
-      // Debounced auto-update on editor changes + URL sync
-      let debounceTimer;
-      editor.onDidChangeModelContent(() => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          updateActiveTab();
-          updateUrlWithCode(editor.getValue());
-        }, 150);
-      });
-
-      // Tab switching with auto-update
-      tabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-          switchToTab(tab.dataset.tab);
-          updateActiveTab();
-        });
-      });
-
-      // Run initial update and sync URL
-      updateActiveTab();
-      updateUrlWithCode(editor.getValue());
-
-      // Copy URL button
-      const shareBtn = document.getElementById("shareBtn");
-
-      shareBtn.addEventListener("click", async () => {
-        const url = window.location.href;
-        let copied = false;
-
-        // Try modern clipboard API
-        if (navigator.clipboard?.writeText) {
-          try {
-            await navigator.clipboard.writeText(url);
-            copied = true;
-          } catch {}
-        }
-
-        // Fallback to execCommand
-        if (!copied) {
-          const input = document.createElement("input");
-          input.value = url;
-          input.style.position = "fixed";
-          input.style.opacity = "0";
-          document.body.appendChild(input);
-          input.select();
-          try {
-            copied = document.execCommand("copy");
-          } catch {}
-          document.body.removeChild(input);
-        }
-
-        if (copied) {
-          shareBtn.textContent = "copied";
-          setTimeout(() => {
-            shareBtn.textContent = "share";
-          }, 2000);
-        } else {
-          prompt("Copy this URL:", url);
-        }
-      });
-    </script>
   </body>
 </html>
