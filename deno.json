@@ -11,11 +11,7 @@
   },
   "deploy": {
     "org": "zk",
-    "app": "solar",
-    "runtime": {
-      "mode": "dynamic",
-      "entrypoint": "serve.mts"
-    }
+    "app": "solar"
   },
   "fmt": {
     "useTabs": false,
