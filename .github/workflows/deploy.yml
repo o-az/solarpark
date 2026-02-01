@@ -12,6 +12,7 @@ defaults:
     shell: bash
 
 env:
+  RUST_BACKTRACE: full
   ACTIONS_RUNNER_DEBUG: true
 
 jobs:
@@ -25,15 +26,29 @@ jobs:
       - name: "🔑 Checkout"
         uses: actions/checkout@v6
 
+      - name: "🦀 Setup Rust"
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - name: "Install sccache"
+        uses: mozilla-actions/sccache-action@main
+
+      - name: "📦 Cache cargo"
+        uses: actions/cache@main
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
       - name: "🦖 Setup Deno"
         uses: denoland/setup-deno@main
         with:
           deno-version: "latest"
-
-      - name: "🦀 Setup Rust"
-        uses: dtolnay/rust-action@stable
-        with:
-          targets: wasm32-unknown-unknown
 
       - name: Build & Deploy
         run: |
