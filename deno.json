@@ -3,7 +3,7 @@
   "tasks": {
     "check": "deno fmt && deno lint",
     "dev": "deno run --allow-all --watch serve.mts",
-    "build": "deno run --allow-all jsr:@deno/wasmbuild --project='solarpark' --out='dist'"
+    "build": "deno run --allow-all jsr:@deno/wasmbuild@0.19.2 --project='solarpark' --out='dist'"
   },
   "imports": {
     "@std/http": "jsr:@std/http@^1.0.23"
