@@ -28,6 +28,7 @@ jobs:
         run: |
           deno fmt --check
           deno lint
+          deno check
 
       - name: "Build"
         run: deno task build
