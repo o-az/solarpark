@@ -1,6 +1,5 @@
 node_modules
 .DS_Store
-dist
 .vscode
 dist-ssr
 *.local
@@ -27,3 +26,5 @@ _tmp
 _verify
 .pnpm-store
 lib
+
+dist
