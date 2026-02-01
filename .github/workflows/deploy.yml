@@ -30,6 +30,11 @@ jobs:
         with:
           deno-version: "latest"
 
+      - name: "🦀 Setup Rust"
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-unknown-unknown
+
       - name: Build & Deploy
         run: |
           deno run \
