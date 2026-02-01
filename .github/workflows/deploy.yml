@@ -50,7 +50,7 @@ jobs:
         with:
           deno-version: "latest"
 
-      - name: Build & Deploy
+      - name: Build WASM
         run: |
           deno run \
             --allow-all \
@@ -58,8 +58,11 @@ jobs:
             --project='solarpark' \
             --out='dist'
 
-          sleep 1
-
+      - name: Deploy
+        run: |
+          # Remove dist from .gitignore so deno deploy uploads it
+          sed -i '/^dist$/d' .gitignore
+          
           deno deploy \
             --app='solar' \
             --prod \
