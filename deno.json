@@ -1,10 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/denoland/deno/refs/heads/main/cli/schemas/config-file.v1.json",
   "tasks": {
-    "check": "deno fmt && deno lint",
+    "check": "deno fmt && deno lint && deno check",
     "dev": "deno run --allow-all --watch serve.mts",
     "check:build": "deno task wasmbuild@0.19.2 --check",
-    "build": "deno run --allow-all jsr:@deno/wasmbuild@0.19.2 --project='solarpark' --out='dist' --skip-opt"
+    "build": "deno run --allow-all jsr:@deno/wasmbuild@0.19.2 --out='dist' --project='solar' --skip-opt"
   },
   "imports": {
     "@std/http": "jsr:@std/http@^1.0.23"
