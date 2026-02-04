@@ -56,7 +56,7 @@ jobs:
             --allow-all \
             jsr:@deno/wasmbuild@0.19.2 \
             --out='dist' \
-            --project='solar' \
+            --project='solarpark' \
             --skip-opt
 
       - name: Deploy
